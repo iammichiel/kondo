@@ -8,6 +8,7 @@ const FILE_PACKAGE_JSON: &str = "package.json";
 const FILE_ASSEMBLY_CSHARP: &str = "Assembly-CSharp.csproj";
 const FILE_STACK_HASKELL: &str = "stack.yaml";
 const FILE_SBT_BUILD: &str = "build.sbt";
+const FILE_COMPOSER_JSON: &str = "composer.json";
 
 const PROJECT_CARGO_DIRS: [&str; 1] = ["target"];
 const PROJECT_NODE_DIRS: [&str; 1] = ["node_modules"];
@@ -22,12 +23,14 @@ const PROJECT_UNITY_DIRS: [&str; 7] = [
 ];
 const PROJECT_STACK_DIRS: [&str; 1] = [".stack-work"];
 const PROJECT_SBT_DIRS: [&str; 2] = ["target", "project/target"];
+const PROJECT_COMPOSER_DIRS: [&str; 1] = ["vendor"];
 
 const PROJECT_CARGO_NAME: &str = "Cargo";
 const PROJECT_NODE_NAME: &str = "Node";
 const PROJECT_UNITY_NAME: &str = "Unity";
 const PROJECT_STACK_NAME: &str = "Stack";
 const PROJECT_SBT_NAME: &str = "SBT";
+const PROJECT_COMPOSER_NAME: &str = "Composer";
 
 fn cargo_project(path: &path::Path) -> Option<Project> {
     let has_cargo_toml = path.read_dir().unwrap().any(|r| match r {
@@ -99,12 +102,27 @@ fn stack_project(path: &path::Path) -> Option<Project> {
     None
 }
 
-const PROJECT_TYPES: [fn(path: &path::Path) -> Option<Project>; 5] = [
+fn composer_project(path: &path::Path) -> Option<Project> {
+    let has_composer_json = path.read_dir().unwrap().any(|r| match r {
+        Ok(de) => de.file_name() == FILE_COMPOSER_JSON,
+        Err(_) => false,
+    });
+    if has_composer_json {
+        return Some(Project {
+            project_type: ProjectType::Composer,
+            path: path.to_path_buf(),
+        });
+    }
+    None
+}
+
+const PROJECT_TYPES: [fn(path: &path::Path) -> Option<Project>; 6] = [
     cargo_project,
     node_project,
     unity_project,
     stack_project,
     sbt_project,
+    composer_project,
 ];
 
 enum ProjectType {
@@ -113,6 +131,7 @@ enum ProjectType {
     Unity,
     Stack,
     SBT,
+    Composer,
 }
 
 struct Project {
@@ -132,6 +151,7 @@ impl Project {
             ProjectType::Unity => PROJECT_UNITY_DIRS.iter(),
             ProjectType::Stack => PROJECT_STACK_DIRS.iter(),
             ProjectType::SBT => PROJECT_SBT_DIRS.iter(),
+            ProjectType::Composer => PROJECT_COMPOSER_DIRS.iter(),
         }
         .map(|p| dir_size(&self.path.join(p)))
         .sum()
@@ -144,6 +164,7 @@ impl Project {
             ProjectType::Unity => PROJECT_UNITY_NAME,
             ProjectType::Stack => PROJECT_STACK_NAME,
             ProjectType::SBT => PROJECT_SBT_NAME,
+            ProjectType::Composer => PROJECT_COMPOSER_NAME,
         }
     }
 }
